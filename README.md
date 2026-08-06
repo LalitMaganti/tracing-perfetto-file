@@ -4,9 +4,10 @@
 # tracing-perfetto-file
 
 A low-overhead, low-dependency Rust crate for use with the [`tracing`](https://docs.rs/tracing)
-ecosystem which outputs a [Perfetto](https://perfetto.dev) protobuf trace file for
-visualization in the [UI](https://ui.perfetto.dev). It directly streams events to a file
-without an SDK or any external daemons.
+ecosystem which outputs a [Perfetto](https://perfetto.dev) protobuf trace stream for
+visualization in the [UI](https://ui.perfetto.dev). It streams events directly to any
+[`std::io::Write`](https://doc.rust-lang.org/std/io/trait.Write.html) sink—such as a file,
+network connection, or compression encoder—without an SDK or any external daemons.
 
 ![Perfetto UI showing explicitly nested span tracks, a counter, source locations, and structured fields.](docs/perfetto-ui.png)
 
@@ -56,6 +57,7 @@ use tracing_subscriber::util::SubscriberInitExt;
 
 fn setup_tracing(path: impl AsRef<Path>) -> std::io::Result<FlushGuard> {
     let file = std::fs::File::create(path)?;
+    // The writer can be any owned `Write + Send` sink, e.g. a `TcpStream`.
     let (layer, guard) = PerfettoLayer::builder(file)
         .with_debug_annotations()
         .with_source_locations()
@@ -77,6 +79,10 @@ fn main() -> std::io::Result<()> {
     guard.flush()
 }
 ```
+
+`PerfettoLayer::builder` is not limited to files. For example, pass an owned
+`std::net::TcpStream` to stream the trace to a collector, or a compression encoder to compress
+it as it is emitted. The sink must implement `Write + Send + 'static`.
 
 ## Performance
 

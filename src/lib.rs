@@ -19,7 +19,7 @@ use std::sync::Arc;
 
 use crate::runtime::{Config, Inner};
 
-/// A [`tracing_subscriber::Layer`] that writes a Perfetto trace file.
+/// A [`tracing_subscriber::Layer`] that writes a Perfetto trace stream.
 ///
 /// Construct with [`PerfettoLayer::builder`]; see the crate docs for usage.
 #[must_use = "the layer must be installed on a tracing subscriber"]
@@ -29,6 +29,17 @@ pub struct PerfettoLayer {
 
 impl PerfettoLayer {
     /// Starts building a layer that writes the trace to `writer`.
+    ///
+    /// The writer may be any owned [`Write`] sink, not just a file. For
+    /// example, a TCP connection can stream trace data to a collector:
+    ///
+    /// ```no_run
+    /// # use tracing_perfetto_file::PerfettoLayer;
+    /// let stream = std::net::TcpStream::connect("127.0.0.1:9001")?;
+    /// let (layer, guard) = PerfettoLayer::builder(stream).build();
+    /// # let _ = (layer, guard);
+    /// # Ok::<(), std::io::Error>(())
+    /// ```
     ///
     /// Slices, instants, flows, poll linking, levels, and targets are always
     /// on. Additional data is opt-in through the builder's `with_*` methods.
@@ -139,7 +150,7 @@ impl SpanMode {
 /// Trace bytes accumulate in per-thread queues and only reach the output
 /// writer when a queue fills, a thread exits, or the trace is flushed. Keep
 /// this guard alive for the whole tracing session and drop it (or call
-/// [`FlushGuard::flush`]) before reading the trace file.
+/// [`FlushGuard::flush`]) before consuming the completed trace output.
 #[must_use = "keep the guard alive for the tracing session so buffered data is flushed"]
 pub struct FlushGuard {
     inner: Arc<Inner>,
