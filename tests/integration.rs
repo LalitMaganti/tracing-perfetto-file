@@ -139,10 +139,22 @@ const TRACK_DESCRIPTOR: u32 = 60;
 const FIRST_PACKET_ON_SEQUENCE: u32 = 87;
 // ClockSnapshot / Clock.
 const CLOCKS: u32 = 1;
+const PRIMARY_TRACE_CLOCK: u32 = 2;
 const CLOCK_ID: u32 = 1;
 const CLOCK_TIMESTAMP: u32 = 2;
 const CLOCK_IS_INCREMENTAL: u32 = 3;
 const CUSTOM_CLOCK_ID: u64 = 64;
+#[cfg(any(target_os = "linux", target_os = "android"))]
+const EXPECTED_PRIMARY_CLOCK_ID: u64 = 6;
+#[cfg(any(target_vendor = "apple", windows))]
+const EXPECTED_PRIMARY_CLOCK_ID: u64 = 3;
+#[cfg(not(any(
+    target_os = "linux",
+    target_os = "android",
+    target_vendor = "apple",
+    windows
+)))]
+const EXPECTED_PRIMARY_CLOCK_ID: u64 = 1;
 // TracePacketDefaults / TrackEventDefaults.
 const TRACK_EVENT_DEFAULTS: u32 = 11;
 const TED_TRACK_UUID: u32 = 11;
@@ -256,6 +268,10 @@ fn packet_structure_checks(packets: &[pb::Msg]) {
             .varint(TIMESTAMP)
             .expect("every packet has a timestamp");
         if let Some(snapshot) = packet.msg(CLOCK_SNAPSHOT) {
+            assert_eq!(
+                snapshot.varint(PRIMARY_TRACE_CLOCK),
+                Some(EXPECTED_PRIMARY_CLOCK_ID)
+            );
             let clock = snapshot
                 .msgs(CLOCKS)
                 .into_iter()

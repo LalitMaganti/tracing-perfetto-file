@@ -12,7 +12,7 @@ use std::sync::{Arc, Mutex, OnceLock, PoisonError};
 use std::time::Instant;
 
 use crate::SpanMode;
-use crate::platform::boottime_ns;
+use crate::platform::trace_clock_ns;
 use crate::span_state::SpanStore;
 use crate::thread::acquire;
 
@@ -155,7 +155,7 @@ impl Inner {
 
     #[inline(always)]
     pub(crate) fn raw_clock_ns(&self) -> u64 {
-        boottime_ns().unwrap_or_else(|| self.start.elapsed().as_nanos() as u64)
+        trace_clock_ns().unwrap_or_else(|| self.start.elapsed().as_nanos() as u64)
     }
 
     pub(crate) fn alloc_uuid(&self) -> u64 {

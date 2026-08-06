@@ -8,12 +8,19 @@
 use std::ops::{Deref, DerefMut};
 
 use crate::emit::schema::*;
-use crate::platform::{monotonic_ns, os_tid, process_name};
+use crate::platform::{ClockDomain, monotonic_ns, os_tid, process_name, trace_clock_domain};
 use crate::proto::{MessageToken, ProtoBuffer};
 use crate::runtime::{Inner, PerThreadBuf, PtrMap};
 use crate::thread::ThreadCtx;
 
 const LEVEL_ANNOTATION_NAME_IID: u64 = 1;
+
+fn realtime_ns() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|duration| duration.as_nanos() as u64)
+        .unwrap_or(0)
+}
 
 #[derive(Default)]
 struct Interner {
@@ -346,7 +353,13 @@ impl<'a> SequenceWriter<'a> {
             }
             packet.varint_field(trace_packet::TIMESTAMP, delta);
         } else {
-            Self::initialize_first_packet(&mut packet, raw_timestamp);
+            let (timestamp, clock_id) = match trace_clock_domain() {
+                ClockDomain::Builtin(clock_id) => (raw_timestamp, clock_id),
+                ClockDomain::SequenceLocal => {
+                    (realtime_ns(), clock_snapshot::BUILTIN_CLOCK_REALTIME)
+                }
+            };
+            Self::initialize_first_packet(&mut packet, timestamp, clock_id);
         }
         packet
     }
@@ -368,8 +381,8 @@ impl<'a> SequenceWriter<'a> {
 
     #[cold]
     #[inline(never)]
-    fn initialize_first_packet(packet: &mut Packet<'_>, raw_timestamp: u64) {
-        packet.varint_field(trace_packet::TIMESTAMP, raw_timestamp);
+    fn initialize_first_packet(packet: &mut Packet<'_>, timestamp: u64, timestamp_clock_id: u64) {
+        packet.varint_field(trace_packet::TIMESTAMP, timestamp);
         let sequence_id = packet.sequence.sequence_id;
         packet.varint_field(
             trace_packet::TRUSTED_PACKET_SEQUENCE_ID,
@@ -381,10 +394,7 @@ impl<'a> SequenceWriter<'a> {
             trace_packet::SEQ_INCREMENTAL_STATE_CLEARED | trace_packet::SEQ_NEEDS_INCREMENTAL_STATE,
         );
         packet.varint_field(trace_packet::FIRST_PACKET_ON_SEQUENCE, 1);
-        packet.varint_field(
-            trace_packet::TIMESTAMP_CLOCK_ID,
-            clock_snapshot::BUILTIN_CLOCK_BOOTTIME,
-        );
+        packet.varint_field(trace_packet::TIMESTAMP_CLOCK_ID, timestamp_clock_id);
         let thread_track_uuid = packet.sequence.thread_track_uuid;
         let mut defaults = packet.message(trace_packet::TRACE_PACKET_DEFAULTS);
         defaults.varint_field(
@@ -419,29 +429,34 @@ impl<'a> SequenceWriter<'a> {
     fn clock_snapshot(&mut self) {
         let raw_timestamp = self.timestamp();
         self.sequence.last_timestamp_ns = raw_timestamp;
-        let mut clocks = [
-            (
-                clock_snapshot::CUSTOM_CLOCK_ID,
-                raw_timestamp.saturating_sub(self.sequence.clock_anchor_ns),
-            ),
-            (clock_snapshot::BUILTIN_CLOCK_BOOTTIME, raw_timestamp),
-            (
-                clock_snapshot::BUILTIN_CLOCK_REALTIME,
-                std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .map(|duration| duration.as_nanos() as u64)
-                    .unwrap_or(0),
-            ),
-            (0, 0),
-        ];
-        let mut count = 3;
-        if let Some(timestamp) = monotonic_ns() {
+        let trace_clock_domain = trace_clock_domain();
+        let primary_clock_id = match trace_clock_domain {
+            ClockDomain::Builtin(clock_id) => clock_id,
+            ClockDomain::SequenceLocal => clock_snapshot::BUILTIN_CLOCK_REALTIME,
+        };
+        let mut clocks = [(0, 0); 4];
+        let mut count = 0;
+        clocks[count] = (
+            clock_snapshot::CUSTOM_CLOCK_ID,
+            raw_timestamp.saturating_sub(self.sequence.clock_anchor_ns),
+        );
+        count += 1;
+        if let ClockDomain::Builtin(clock_id) = trace_clock_domain {
+            clocks[count] = (clock_id, raw_timestamp);
+            count += 1;
+        }
+        clocks[count] = (clock_snapshot::BUILTIN_CLOCK_REALTIME, realtime_ns());
+        count += 1;
+        if trace_clock_domain != ClockDomain::Builtin(clock_snapshot::BUILTIN_CLOCK_MONOTONIC)
+            && let Some(timestamp) = monotonic_ns()
+        {
             clocks[count] = (clock_snapshot::BUILTIN_CLOCK_MONOTONIC, timestamp);
             count += 1;
         }
         let mut packet = self.packet_without_initialization();
         {
             let mut snapshot = packet.message(trace_packet::CLOCK_SNAPSHOT);
+            snapshot.varint_field(clock_snapshot::PRIMARY_TRACE_CLOCK, primary_clock_id);
             for (clock_id, timestamp) in &clocks[..count] {
                 let mut clock = snapshot.message(clock_snapshot::CLOCKS);
                 clock.varint_field(clock_snapshot::CLOCK_ID, *clock_id);

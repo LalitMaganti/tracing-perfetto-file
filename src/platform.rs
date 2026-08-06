@@ -28,18 +28,49 @@ fn os_clock_ns(clock_id: i32) -> Option<u64> {
     )
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+#[expect(
+    dead_code,
+    reason = "each target uses one compile-time-selected clock domain"
+)]
+pub(crate) enum ClockDomain {
+    Builtin(u64),
+    SequenceLocal,
+}
+
+/// Perfetto itself uses BOOTTIME on Linux and Android and MONOTONIC on Apple
+/// and Windows.
+#[cfg(any(target_os = "linux", target_os = "android"))]
+const TRACE_CLOCK_DOMAIN: ClockDomain = ClockDomain::Builtin(6);
+#[cfg(any(target_vendor = "apple", windows))]
+const TRACE_CLOCK_DOMAIN: ClockDomain = ClockDomain::Builtin(3);
+#[cfg(not(any(
+    target_os = "linux",
+    target_os = "android",
+    target_vendor = "apple",
+    windows
+)))]
+const TRACE_CLOCK_DOMAIN: ClockDomain = ClockDomain::SequenceLocal;
+
+pub(crate) fn trace_clock_domain() -> ClockDomain {
+    TRACE_CLOCK_DOMAIN
+}
+
 #[cfg(any(target_os = "linux", target_os = "android"))]
 #[inline(always)]
-pub(super) fn boottime_ns() -> Option<u64> {
+pub(super) fn trace_clock_ns() -> Option<u64> {
     const CLOCK_BOOTTIME: i32 = 7;
     os_clock_ns(CLOCK_BOOTTIME)
 }
 
 #[cfg(target_vendor = "apple")]
-pub(super) fn boottime_ns() -> Option<u64> {
+#[inline(always)]
+pub(super) fn trace_clock_ns() -> Option<u64> {
     unsafe extern "C" {
         fn clock_gettime_nsec_np(clock_id: u32) -> u64;
     }
+    // This has the same mach-absolute-time basis Perfetto labels MONOTONIC on
+    // Apple and, unlike realtime, cannot jump when the wall clock is adjusted.
     const CLOCK_UPTIME_RAW: u32 = 8;
     // SAFETY: the function has no preconditions.
     match unsafe { clock_gettime_nsec_np(CLOCK_UPTIME_RAW) } {
@@ -49,7 +80,8 @@ pub(super) fn boottime_ns() -> Option<u64> {
 }
 
 #[cfg(windows)]
-pub(super) fn boottime_ns() -> Option<u64> {
+#[inline(always)]
+pub(super) fn trace_clock_ns() -> Option<u64> {
     #[link(name = "kernel32")]
     unsafe extern "system" {
         fn QueryPerformanceCounter(count: *mut i64) -> i32;
@@ -73,7 +105,8 @@ pub(super) fn boottime_ns() -> Option<u64> {
     target_vendor = "apple",
     windows
 )))]
-pub(super) fn boottime_ns() -> Option<u64> {
+#[inline(always)]
+pub(super) fn trace_clock_ns() -> Option<u64> {
     None
 }
 

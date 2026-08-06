@@ -243,6 +243,8 @@ pub(crate) mod schema {
     pub(crate) mod clock_snapshot {
         /// `repeated Clock clocks = 1;`
         pub const CLOCKS: u32 = 1;
+        /// `optional BuiltinClock primary_trace_clock = 2;`
+        pub const PRIMARY_TRACE_CLOCK: u32 = 2;
         /// `Clock.clock_id = 1;`
         pub const CLOCK_ID: u32 = 1;
         /// `Clock.timestamp = 2;`
@@ -254,8 +256,6 @@ pub(crate) mod schema {
         pub const BUILTIN_CLOCK_REALTIME: u64 = 1;
         /// `BuiltinClock.BUILTIN_CLOCK_MONOTONIC`.
         pub const BUILTIN_CLOCK_MONOTONIC: u64 = 3;
-        /// `BuiltinClock.BUILTIN_CLOCK_BOOTTIME`.
-        pub const BUILTIN_CLOCK_BOOTTIME: u64 = 6;
         /// First sequence-scoped custom clock id (trace_packet.proto: ids
         /// 64-127 are scoped to the packet sequence that defines them).
         pub const CUSTOM_CLOCK_ID: u64 = 64;
