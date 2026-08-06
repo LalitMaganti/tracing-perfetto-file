@@ -34,9 +34,9 @@ the final shutdown flush, but include output work triggered during recording.
 These results were collected in release mode on a 6-core/12-thread Intel
 Xeon Ice Lake virtual machine running Linux.
 
-## Crate benchmark
+## In-crate microbenchmark
 
-Run:
+The focused benchmark for this crate follows Cargo's standard `benches/` layout. Run:
 
 ```console
 cargo bench --bench perf
@@ -60,10 +60,14 @@ Notes:
 - Four-thread throughput was 30.2 million events/s and 7.9 million SpanTracks spans/s.
 - Allocation counts include all Rust allocations during the measured operation after warmup; native allocations are not visible.
 
-## Layer comparison
+## Cross-crate layer comparison
+
+The larger comparison harness is a standalone, non-publishable crate under
+`tools/benchmark-comparison/`. Keeping it outside `benches/` prevents its many optional backend
+dependencies from becoming part of this crate's normal benchmark targets.
 
 ```console
-cargo bench --manifest-path benchmarks/compare/Cargo.toml --bench compare
+cargo bench --manifest-path tools/benchmark-comparison/Cargo.toml --bench compare
 ```
 
 Time spent recording each operation, in nanoseconds:
@@ -110,24 +114,24 @@ Notes:
 
 ```console
 # Direct perfetto-recorder and raw Perfetto Rust SDK APIs
-cargo bench --manifest-path benchmarks/compare/Cargo.toml \
+cargo bench --manifest-path tools/benchmark-comparison/Cargo.toml \
   --features compare-direct --bench compare
 
 # tracing-perfetto-sdk with an active native Perfetto SDK session
-cargo bench --manifest-path benchmarks/compare/Cargo.toml \
+cargo bench --manifest-path tools/benchmark-comparison/Cargo.toml \
   --features compare-native --bench compare
 
 # Modal NativeLayer; requires protoc
-cargo bench --manifest-path benchmarks/compare/Cargo.toml \
+cargo bench --manifest-path tools/benchmark-comparison/Cargo.toml \
   --features compare-modal --bench compare
 
 # Connected Tracy 0.13.1 capture
 TRACY_CAPTURE=/path/to/tracy-capture \
-  cargo bench --manifest-path benchmarks/compare/Cargo.toml \
+  cargo bench --manifest-path tools/benchmark-comparison/Cargo.toml \
   --features compare-tracy --bench compare
 
 # Modal C++ SdkLayer; kept separate and requires protoc
-cargo bench --manifest-path benchmarks/compare/Cargo.toml \
+cargo bench --manifest-path tools/benchmark-comparison/Cargo.toml \
   --features compare-modal-sdk --bench compare
 ```
 
@@ -142,4 +146,4 @@ cargo bench --manifest-path benchmarks/compare/Cargo.toml \
 - Output bytes measure the final artifact's storage cost. Perfetto uses protobuf, Chrome and fmt use text, and Tracy uses a compressed native container, so byte counts do not compare raw encoding efficiency.
 - Backends differ in span semantics and retained metadata. The harness records those capabilities and does not substitute a no-op for unsupported behavior.
 
-Set `COMPARE_ITERS` to override the default 100,000 measured operations. The exact workloads and backend configurations are in `benchmarks/compare/benches/compare.rs`.
+Set `COMPARE_ITERS` to override the default 100,000 measured operations. The exact workloads and backend configurations are in `tools/benchmark-comparison/benches/compare.rs`.

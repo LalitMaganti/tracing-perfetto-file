@@ -1443,7 +1443,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "tracing-perfetto-file-compare"
+name = "tracing-perfetto-file-benchmark-comparison"
 version = "0.0.0"
 dependencies = [
  "perfetto-recorder",

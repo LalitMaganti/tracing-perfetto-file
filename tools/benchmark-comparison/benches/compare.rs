@@ -3,26 +3,7 @@
 
 //! Cross-backend tracing-layer comparison.
 //!
-//! Run every supported combination:
-//! `cargo bench --bench compare`
-//!
-//! Run one isolated combination:
-//! `cargo bench --bench compare -- --child ours-span span`
-//!
-//! Include direct `perfetto-recorder` and raw Perfetto Rust SDK calls:
-//! `cargo bench --features compare-direct --bench compare`
-//!
-//! Include the Perfetto SDK tracing layer (large vendored C++ build):
-//! `cargo bench --features compare-native --bench compare`
-//!
-//! Include Modal's native writer (requires `protoc`):
-//! `cargo bench --features compare-modal --bench compare`
-//!
-//! Include Tracy with a real capture process:
-//! `TRACY_CAPTURE=/path/to/tracy-capture cargo bench --features compare-tracy --bench compare`
-//!
-//! Include Modal's C++ SDK layer in its own feature build (requires `protoc`):
-//! `cargo bench --features compare-modal-sdk --bench compare`
+//! See `docs/performance.md` for commands and prerequisites.
 
 use std::alloc::{GlobalAlloc, Layout, System};
 use std::io::Write;

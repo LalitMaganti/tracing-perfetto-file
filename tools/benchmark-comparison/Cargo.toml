@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 [package]
-name = "tracing-perfetto-file-compare"
+name = "tracing-perfetto-file-benchmark-comparison"
 version = "0.0.0"
 publish = false
 edition = "2024"
