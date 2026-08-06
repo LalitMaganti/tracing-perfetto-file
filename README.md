@@ -137,6 +137,15 @@ relationships.
 lock only while being drained, either when a queue fills, a thread exits, or
 `FlushGuard::flush` is called.
 
+## AI usage
+
+For coding: AI was used for mechanical coding implementation but the design, architecture and
+overall shape of the project came from me. I understand all of the code and take full
+responsibility for it.
+
+For other tasks: AI was used for brainstorming and running benchmarks. This README was hand
+written with AI filling in links and performance numbers (double checked by me).
+
 ## License
 
 Copyright 2026 Lalit Maganti.
