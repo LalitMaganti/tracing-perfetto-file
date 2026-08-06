@@ -5,9 +5,9 @@
 
 A low-overhead, low-dependency Rust crate for use with the [`tracing`](https://docs.rs/tracing)
 ecosystem which outputs a [Perfetto](https://perfetto.dev) protobuf trace stream for
-visualization in the [UI](https://ui.perfetto.dev). It streams events directly to any
-[`std::io::Write`](https://doc.rust-lang.org/std/io/trait.Write.html) sink—such as a file,
-network connection, or compression encoder—without an SDK or any external daemons.
+visualization in the [UI](https://ui.perfetto.dev). It streams events directly to
+a file or any other [`std::io::Write`](https://doc.rust-lang.org/std/io/trait.Write.html) sink
+(e.g. network connection, or compression encoder) without an SDK or any external daemons.
 
 ![Perfetto UI showing explicitly nested span tracks, a counter, source locations, and structured fields.](docs/perfetto-ui.png)
 
