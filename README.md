@@ -35,7 +35,8 @@ Compared to other crates, it:
 - supports visualizing spans in one of three ways:
   - `SpanTracks` (default) gives every span its own lifetime track, with optional nested
     `poll` slices for enter-to-exit intervals.
-  - `ThreadTracks` shows each enter-to-exit interval on the executing thread.
+  - `ThreadTracks` shows each enter-to-exit interval on the executing thread and does not emit
+    separate lifetime tracks.
   - `Both` combines the lifetime and execution views.
 - can additionally emit structured event and span fields as queryable debug annotations, source
   locations, numeric counters, and `follows_from` relationships as causal flows.
@@ -96,10 +97,9 @@ See the [detailed performance](docs/performance.md) breakdown for more informati
 ## Comparison to alternatives
 
 - **Official [`tracing-perfetto-sdk`](https://crates.io/crates/tracing-perfetto-sdk)**
-  - **Pros:** integrates with the native Perfetto producer service and supports runtime categories
-    and custom data sources.
-  - **Cons:** requires the SDK and service machinery and does not encode the `tracing` span tree
-    as parented tracks.
+  - **Pros:** integrates with the native Perfetto SDK's in-process and system backends.
+  - **Cons:** requires the native SDK and its session machinery and does not encode the `tracing`
+    span tree as parented tracks.
 - **Modal [`tracing-perfetto-sdk-layer`](https://crates.io/crates/tracing-perfetto-sdk-layer)**
   - **Pros:** offers both a Rust protobuf layer and a C++ SDK-backed layer, with richer trace
     configuration.
