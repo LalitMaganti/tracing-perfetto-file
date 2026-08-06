@@ -1,0 +1,30 @@
+# Copyright 2026 Lalit Maganti
+# SPDX-License-Identifier: Apache-2.0
+
+[package]
+name = "tracing-perfetto-file"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.88"
+authors = ["Lalit Maganti <lalitmaganti@gmail.com>"]
+description = "Fast tracing-subscriber layer that writes Perfetto protobuf traces directly, without protoc, generated code, or the native Perfetto SDK"
+license = "Apache-2.0"
+readme = "README.md"
+documentation = "https://docs.rs/tracing-perfetto-file"
+keywords = ["perfetto", "tracing", "profiling", "instrumentation"]
+categories = ["development-tools::profiling", "development-tools::debugging"]
+
+[dependencies]
+crossbeam-queue = { version = "0.3", default-features = false, features = ["alloc"] }
+dashmap = { version = "6.2", default-features = false }
+parking_lot = { version = "0.12", default-features = false }
+rtrb = { version = "0.3", default-features = false }
+tracing-core = { version = "0.1", default-features = false }
+tracing-subscriber = { version = "0.3", default-features = false, features = ["registry", "std"] }
+
+[dev-dependencies]
+tracing = "0.1"
+
+[[bench]]
+name = "perf"
+harness = false

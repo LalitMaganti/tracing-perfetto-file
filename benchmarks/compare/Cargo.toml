@@ -1,0 +1,39 @@
+# Copyright 2026 Lalit Maganti
+# SPDX-License-Identifier: Apache-2.0
+
+[package]
+name = "tracing-perfetto-file-compare"
+version = "0.0.0"
+publish = false
+edition = "2024"
+license = "Apache-2.0"
+rust-version = "1.88"
+
+[features]
+compare-all = ["compare-direct", "compare-modal", "compare-native", "compare-tracy"]
+compare-direct = ["compare-raw-sdk", "compare-recorder"]
+compare-modal = ["dep:tracing-perfetto-sdk-layer"]
+compare-modal-sdk = ["dep:tracing-perfetto-sdk-layer", "tracing-perfetto-sdk-layer/sdk"]
+compare-native = ["dep:perfetto-sdk", "dep:tracing-perfetto-sdk"]
+compare-raw-sdk = ["dep:perfetto-sdk"]
+compare-recorder = ["dep:perfetto-recorder"]
+compare-tracy = ["dep:tracing-tracy"]
+
+[dependencies]
+perfetto-recorder = { version = "0.3.3", features = ["enable"], optional = true }
+perfetto-sdk = { version = "1.0.3", optional = true }
+tracing-perfetto-file = { path = "../.." }
+tracing = "0.1"
+tracing-chrome = "0.7.2"
+tracing-flame = "0.2.0"
+tracing-perfetto = "0.1.5"
+tracing-perfetto-sdk = { version = "1.0.0", optional = true }
+tracing-perfetto-sdk-layer = { version = "0.13.1", default-features = false, optional = true }
+tracing-perfetto-writer = "0.3.2"
+tracing-tracy = { version = "0.11.4", default-features = false, features = ["enable", "manual-lifetime", "only-localhost", "timer-fallback"], optional = true }
+tracing-core = "0.1"
+tracing-subscriber = { version = "0.3", default-features = false, features = ["fmt", "registry", "std"] }
+
+[[bench]]
+name = "compare"
+harness = false
