@@ -11,6 +11,8 @@ description = "Fast tracing-subscriber layer that writes Perfetto protobuf trace
 license = "Apache-2.0"
 readme = "README.md"
 documentation = "https://docs.rs/tracing-perfetto-file"
+homepage = "https://github.com/LalitMaganti/tracing-perfetto-file"
+repository = "https://github.com/LalitMaganti/tracing-perfetto-file"
 keywords = ["perfetto", "tracing", "profiling", "instrumentation"]
 categories = ["development-tools::profiling", "development-tools::debugging"]
 
