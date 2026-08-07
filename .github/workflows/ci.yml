@@ -1,8 +1,14 @@
 name: CI
 
 on:
+  # Post-submit validation of every commit that lands on the default branch.
   push:
+    branches:
+      - main
+  # Presubmit validation of pull requests.
   pull_request:
+  # Allows a missed or failed post-submit run to be started manually.
+  workflow_dispatch:
 
 permissions:
   contents: read
