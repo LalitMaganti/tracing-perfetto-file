@@ -13,6 +13,12 @@ on:
 permissions:
   contents: read
 
+# Only the newest main-branch push needs post-submit validation. Pull request
+# runs use separate groups and are not cancelled by subsequent commits.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'push' && 'post-submit' || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'push' }}
+
 jobs:
   test:
     name: Test (${{ matrix.os }})
