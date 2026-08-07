@@ -1,0 +1,42 @@
+# Create a draft GitHub release on version tags.
+#
+# Tag pushes create a generated draft release, which can be reviewed before
+# it is published.
+name: Release
+
+permissions:
+  contents: write
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Verify release tag
+        run: |
+          if [[ ! "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Release tag must have the form vx.y.z; got $GITHUB_REF_NAME" >&2
+            exit 1
+          fi
+
+      - name: Create draft release
+        run: |
+          TAG="${{ github.ref_name }}"
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            echo "Release $TAG already exists"
+          else
+            gh release create "$TAG" --target "${{ github.sha }}" \
+              --draft --title "$TAG" --generate-notes
+          fi
