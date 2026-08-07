@@ -1,0 +1,50 @@
+# Publish the crate to crates.io when a version tag is pushed.
+#
+# Uses crates.io trusted publishing (OIDC), so no API token is required.
+# Configure the trusted publisher at:
+# https://crates.io/crates/tracing-perfetto-file/settings
+# Owner: LalitMaganti
+# Repository: tracing-perfetto-file
+# Workflow: publish-crate.yml
+# Environment: cargo
+name: Publish Crate
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+*'
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  publish:
+    name: Publish to crates.io
+    runs-on: ubuntu-latest
+    environment: cargo
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Verify tag matches crate version
+        shell: bash
+        run: |
+          crate_version=$(cargo metadata --no-deps --format-version 1 \
+            | python3 -c 'import json,sys; print(json.load(sys.stdin)["packages"][0]["version"])')
+          tag_version="${GITHUB_REF_NAME#v}"
+          if [[ "$tag_version" != "$crate_version" ]]; then
+            echo "Tag version $tag_version does not match crate version $crate_version" >&2
+            exit 1
+          fi
+
+      - name: Get crates.io OIDC token
+        uses: rust-lang/crates-io-auth-action@v1
+        id: auth
+
+      - name: Publish crate
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
+        run: cargo publish --locked
