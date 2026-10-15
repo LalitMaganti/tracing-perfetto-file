@@ -20,7 +20,7 @@ categories = ["development-tools::profiling", "development-tools::debugging"]
 crossbeam-queue = { version = "0.3", default-features = false, features = ["alloc"] }
 dashmap = { version = "6.2", default-features = false }
 parking_lot = { version = "0.12", default-features = false }
-rtrb = { version = "0.3", default-features = false }
+rtrb = { version = "0.4", default-features = false }
 tracing-core = { version = "0.1", default-features = false }
 tracing-subscriber = { version = "0.3", default-features = false, features = ["registry", "std"] }
 
