@@ -338,6 +338,7 @@ pub(crate) mod schema {
         /// `optional int32 pid = 1;`
         pub const PID: u32 = 1;
         /// `repeated string cmdline = 2;`
+        #[cfg(not(all(target_family = "wasm", target_os = "unknown")))]
         pub const CMDLINE: u32 = 2;
         /// `optional string process_name = 6;`
         pub const PROCESS_NAME: u32 = 6;

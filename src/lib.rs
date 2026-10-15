@@ -52,6 +52,7 @@ impl PerfettoLayer {
                 poll_slices: false,
                 source_locations: false,
                 counters: false,
+                process_arguments: true,
             },
         }
     }
@@ -65,6 +66,15 @@ pub struct PerfettoLayerBuilder {
 }
 
 impl PerfettoLayerBuilder {
+    /// Omits command-line arguments from process metadata.
+    ///
+    /// Arguments are recorded by default on native platforms, but may contain
+    /// credentials or other sensitive values. Browser captures never record them.
+    pub fn without_process_arguments(mut self) -> Self {
+        self.config.process_arguments = false;
+        self
+    }
+
     /// Selects how spans map onto tracks. Default: [`SpanMode::SpanTracks`].
     pub fn span_mode(mut self, mode: SpanMode) -> Self {
         self.config.span_mode = mode;

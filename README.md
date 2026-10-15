@@ -157,3 +157,17 @@ written with AI filling in links and performance numbers (double checked by me).
 Copyright 2026 Lalit Maganti.
 
 Licensed under the Apache License, Version 2.0. See `LICENSE` and `NOTICE`.
+
+## Browser captures and process metadata
+
+On browser WebAssembly targets (`wasm32-unknown-unknown`), the exporter uses
+`web-time` for clocks and a synthetic process named `WASM instance` with ID 1.
+Each capture describes one instance; it does not discover other workers or OS
+threads. The caller provides the output writer and is responsible for saving or
+transferring its contents.
+
+Native process descriptors include command-line arguments by default. To exclude
+arguments that might contain credentials or other sensitive values, use
+`PerfettoLayer::builder(writer).without_process_arguments().build()`. This option
+retains the process name and ID. Browser captures never include command-line
+arguments.

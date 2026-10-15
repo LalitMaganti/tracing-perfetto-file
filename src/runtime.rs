@@ -9,10 +9,9 @@ use std::io::Write;
 use std::num::NonZeroU64;
 use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, OnceLock, PoisonError};
-use std::time::Instant;
 
 use crate::SpanMode;
-use crate::platform::trace_clock_ns;
+use crate::platform::{Instant, trace_clock_ns};
 use crate::span_state::SpanStore;
 use crate::thread::acquire;
 
@@ -23,6 +22,7 @@ pub(crate) struct Config {
     pub poll_slices: bool,
     pub source_locations: bool,
     pub counters: bool,
+    pub process_arguments: bool,
 }
 
 /// An owned span field value, stored until the span's slices are emitted.
@@ -119,7 +119,7 @@ pub(crate) struct Inner {
 
 impl Inner {
     pub(crate) fn new(writer: Box<dyn Write + Send>, config: Config) -> Self {
-        let uuid_base = RandomState::new().hash_one(std::process::id());
+        let uuid_base = RandomState::new().hash_one(crate::platform::process_id());
         let flow_id_base = RandomState::new().hash_one(uuid_base);
         static NEXT_LAYER_ID: AtomicU64 = AtomicU64::new(1);
         Inner {
@@ -189,7 +189,8 @@ impl Inner {
     }
 
     pub(crate) fn alloc_tid(&self) -> u64 {
-        u64::from(std::process::id()) + self.next_tid_offset.fetch_add(1, Ordering::Relaxed)
+        u64::from(crate::platform::process_id())
+            + self.next_tid_offset.fetch_add(1, Ordering::Relaxed)
     }
 
     pub(crate) fn process_track_uuid(&self) -> u64 {

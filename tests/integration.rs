@@ -1006,3 +1006,33 @@ fn write_error_is_sticky_and_surfaced() {
     let err = guard.flush().unwrap_err();
     assert!(err.to_string().contains("disk full"));
 }
+
+#[test]
+fn process_arguments_can_be_disabled_without_removing_process_metadata() {
+    for include_arguments in [true, false] {
+        let output = SharedBuf::default();
+        let builder = PerfettoLayer::builder(output.clone());
+        let builder = if include_arguments {
+            builder
+        } else {
+            builder.without_process_arguments()
+        };
+        let (layer, guard) = builder.build();
+        let subscriber = tracing_subscriber::registry().with(layer);
+        tracing::subscriber::with_default(subscriber, || {
+            tracing::info!("record process metadata");
+        });
+        guard.flush().unwrap();
+        let packets = parse_trace(&output.0.lock().unwrap());
+        let process = packets
+            .iter()
+            .find_map(|packet| packet.msg(TRACK_DESCRIPTOR)?.msg(TD_PROCESS))
+            .expect("process descriptor");
+        assert_eq!(process.varint(1), Some(u64::from(std::process::id())));
+        assert!(process.string(6).is_some());
+        assert_eq!(process.bytes(2).is_some(), include_arguments);
+        if include_arguments {
+            assert_eq!(process.string(2), std::env::args().next());
+        }
+    }
+}
