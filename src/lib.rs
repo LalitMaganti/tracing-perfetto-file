@@ -52,6 +52,7 @@ impl PerfettoLayer {
                 poll_slices: false,
                 source_locations: false,
                 counters: false,
+                process_arguments: true,
             },
         }
     }
@@ -65,6 +66,16 @@ pub struct PerfettoLayerBuilder {
 }
 
 impl PerfettoLayerBuilder {
+    /// Omits command-line arguments from process metadata.
+    ///
+    /// Arguments are recorded by default on native platforms, but may contain
+    /// credentials or other sensitive values. This must be called for browser
+    /// WebAssembly targets, where command-line arguments are unavailable.
+    pub fn without_process_arguments(mut self) -> Self {
+        self.config.process_arguments = false;
+        self
+    }
+
     /// Selects how spans map onto tracks. Default: [`SpanMode::SpanTracks`].
     pub fn span_mode(mut self, mode: SpanMode) -> Self {
         self.config.span_mode = mode;
@@ -103,14 +114,43 @@ impl PerfettoLayerBuilder {
 
     /// Builds the layer. Keep the returned [`FlushGuard`] alive for the
     /// duration of tracing; dropping it flushes all buffered data.
+    ///
+    /// # Panics
+    ///
+    /// Panics on browser WebAssembly targets if process arguments are enabled.
+    /// Call [`Self::without_process_arguments`] first, or use [`Self::try_build`]
+    /// to handle the error.
     pub fn build(self) -> (PerfettoLayer, FlushGuard) {
+        self.try_build().expect("failed to build Perfetto layer")
+    }
+
+    /// Builds the layer, returning an error for unsupported configuration.
+    /// Keep the returned [`FlushGuard`] alive for the duration of tracing.
+    ///
+    /// Browser captures use web clocks and a synthetic process named `WASM instance`
+    /// with a random ID retained for the lifetime of the instance. The caller
+    /// supplies the writer and is responsible for saving or transferring the trace.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`std::io::ErrorKind::Unsupported`] on browser WebAssembly targets
+    /// if process arguments are enabled. Call [`Self::without_process_arguments`]
+    /// to disable them. No trace data is written when configuration is rejected.
+    pub fn try_build(self) -> std::io::Result<(PerfettoLayer, FlushGuard)> {
+        #[cfg(all(target_family = "wasm", target_os = "unknown"))]
+        if self.config.process_arguments {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::Unsupported,
+                "process arguments are unavailable on browser WebAssembly targets; call without_process_arguments()",
+            ));
+        }
         let inner = Arc::new(Inner::new(self.writer, self.config));
-        (
+        Ok((
             PerfettoLayer {
                 inner: Arc::clone(&inner),
             },
             FlushGuard { inner },
-        )
+        ))
     }
 }
 

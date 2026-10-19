@@ -8,7 +8,9 @@
 use std::ops::{Deref, DerefMut};
 
 use crate::emit::schema::*;
-use crate::platform::{ClockDomain, monotonic_ns, os_tid, process_name, trace_clock_domain};
+use crate::platform::{
+    ClockDomain, SystemTime, UNIX_EPOCH, monotonic_ns, os_tid, process_name, trace_clock_domain,
+};
 use crate::proto::{MessageToken, ProtoBuffer};
 use crate::runtime::{Inner, PerThreadBuf, PtrMap};
 use crate::thread::ThreadCtx;
@@ -16,8 +18,8 @@ use crate::thread::ThreadCtx;
 const LEVEL_ANNOTATION_NAME_IID: u64 = 1;
 
 fn realtime_ns() -> u64 {
-    std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
         .map(|duration| duration.as_nanos() as u64)
         .unwrap_or(0)
 }
@@ -473,23 +475,27 @@ impl<'a> SequenceWriter<'a> {
             return;
         }
         let process_uuid = self.inner.process_track_uuid();
-        let pid = u64::from(std::process::id());
+        let pid = u64::from(crate::platform::process_id());
         let name = process_name();
+        let process_arguments = self.inner.config.process_arguments;
         let mut packet = self.packet_without_initialization();
         {
             let mut descriptor = packet.message(trace_packet::TRACK_DESCRIPTOR);
             descriptor.redundant_varint_field(track_descriptor::UUID, process_uuid);
             let mut process = descriptor.message(track_descriptor::PROCESS);
             process.varint_field(process_descriptor::PID, pid);
-            for argument in std::env::args() {
-                process.string_field(process_descriptor::CMDLINE, &argument);
+            if process_arguments {
+                #[cfg(not(all(target_family = "wasm", target_os = "unknown")))]
+                for argument in std::env::args() {
+                    process.string_field(process_descriptor::CMDLINE, &argument);
+                }
             }
             process.string_field(process_descriptor::PROCESS_NAME, &name);
         }
     }
 
     fn thread_descriptor(&mut self) {
-        let pid = u64::from(std::process::id());
+        let pid = u64::from(crate::platform::process_id());
         let tid = os_tid().unwrap_or_else(|| self.inner.alloc_tid());
         let thread_name = std::thread::current()
             .name()

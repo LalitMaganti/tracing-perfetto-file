@@ -359,6 +359,10 @@ impl SpanStore {
         match self.pools.entry(key) {
             Entry::Occupied(occupied) => Some(Arc::clone(occupied.get())),
             Entry::Vacant(vacant) => {
+                #[allow(
+                    deprecated,
+                    reason = "try_update requires Rust 1.95; the crate supports Rust 1.88"
+                )]
                 self.reusable_keys
                     .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |count| {
                         (count < MAX_REUSABLE_KEYS).then_some(count + 1)

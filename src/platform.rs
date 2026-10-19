@@ -1,6 +1,13 @@
 // Copyright 2026 Lalit Maganti
 // SPDX-License-Identifier: Apache-2.0
 
+#[cfg(all(target_family = "wasm", target_os = "unknown"))]
+use std::sync::OnceLock;
+#[cfg(not(all(target_family = "wasm", target_os = "unknown")))]
+pub(crate) use std::time::{Instant, SystemTime, UNIX_EPOCH};
+#[cfg(all(target_family = "wasm", target_os = "unknown"))]
+pub(crate) use web_time::{Instant, SystemTime, UNIX_EPOCH};
+
 /// Reads an OS clock in nanoseconds through `clock_gettime`.
 #[cfg(any(target_os = "linux", target_os = "android"))]
 #[inline(always)]
@@ -29,7 +36,7 @@ fn os_clock_ns(clock_id: i32) -> Option<u64> {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
-#[expect(
+#[allow(
     dead_code,
     reason = "each target uses one compile-time-selected clock domain"
 )]
@@ -161,6 +168,7 @@ pub(crate) fn os_tid() -> Option<u64> {
     None
 }
 
+#[cfg(not(all(target_family = "wasm", target_os = "unknown")))]
 pub(crate) fn process_name() -> String {
     std::env::current_exe()
         .ok()
@@ -169,4 +177,23 @@ pub(crate) fn process_name() -> String {
                 .map(|name| name.to_string_lossy().into_owned())
         })
         .unwrap_or_else(|| format!("process {}", std::process::id()))
+}
+
+#[cfg(not(all(target_family = "wasm", target_os = "unknown")))]
+pub(crate) fn process_id() -> u32 {
+    std::process::id()
+}
+
+#[cfg(all(target_family = "wasm", target_os = "unknown"))]
+pub(crate) fn process_name() -> String {
+    "WASM instance".into()
+}
+
+// Keep one synthetic process ID per WASM instance across all captures. Randomizing
+// it reduces collisions when traces from different instances/workers are merged.
+#[cfg(all(target_family = "wasm", target_os = "unknown"))]
+pub(crate) fn process_id() -> u32 {
+    static PROCESS_ID: OnceLock<u32> = OnceLock::new();
+    // Perfetto's process descriptor uses an int32 PID; reserve zero as well.
+    *PROCESS_ID.get_or_init(|| (js_sys::Math::random() * f64::from(i32::MAX)) as u32 + 1)
 }

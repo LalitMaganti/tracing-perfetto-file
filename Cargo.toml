@@ -30,3 +30,10 @@ tracing = "0.1"
 [[bench]]
 name = "perf"
 harness = false
+
+[target.'cfg(all(target_family = "wasm", target_os = "unknown"))'.dependencies]
+js-sys = "0.3"
+web-time = "1.1.0"
+
+[target.'cfg(all(target_family = "wasm", target_os = "unknown"))'.dev-dependencies]
+wasm-bindgen-test = "0.3"
