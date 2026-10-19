@@ -1036,3 +1036,64 @@ fn process_arguments_can_be_disabled_without_removing_process_metadata() {
         }
     }
 }
+
+#[cfg(all(target_family = "wasm", target_os = "unknown"))]
+mod browser {
+    use super::*;
+    use wasm_bindgen_test::{wasm_bindgen_test, wasm_bindgen_test_configure};
+
+    wasm_bindgen_test_configure!(run_in_browser);
+
+    #[wasm_bindgen_test]
+    fn process_arguments_are_rejected_before_recording() {
+        let output = SharedBuf::default();
+        let error = PerfettoLayer::builder(output.clone())
+            .try_build()
+            .err()
+            .expect("browser process arguments must be rejected");
+        assert_eq!(error.kind(), std::io::ErrorKind::Unsupported);
+        assert!(error.to_string().contains("without_process_arguments()"));
+        assert!(output.0.lock().unwrap().is_empty());
+    }
+
+    #[wasm_bindgen_test]
+    fn captures_reuse_the_instance_process_id() {
+        let mut previous_pid = None;
+        for _ in 0..2 {
+            let output = SharedBuf::default();
+            let (layer, guard) = PerfettoLayer::builder(output.clone())
+                .without_process_arguments()
+                .try_build()
+                .unwrap();
+            let subscriber = tracing_subscriber::registry().with(layer);
+            tracing::subscriber::with_default(subscriber, || {
+                tracing::info_span!("browser operation").in_scope(|| {
+                    tracing::info!("browser event");
+                });
+            });
+            guard.flush().unwrap();
+            let packets = parse_trace(&output.0.lock().unwrap());
+            let process = packets
+                .iter()
+                .find_map(|packet| packet.msg(TRACK_DESCRIPTOR)?.msg(TD_PROCESS))
+                .expect("process descriptor");
+            let pid = process.varint(1).unwrap();
+            assert!((1..=i32::MAX as u64).contains(&pid));
+            assert_eq!(process.string(6).as_deref(), Some("WASM instance"));
+            assert!(process.bytes(2).is_none());
+            if let Some(previous) = previous_pid {
+                assert_eq!(pid, previous);
+            }
+            previous_pid = Some(pid);
+
+            let threads: Vec<_> = packets
+                .iter()
+                .filter_map(|packet| packet.msg(TRACK_DESCRIPTOR)?.msg(TD_THREAD))
+                .collect();
+            assert!(!threads.is_empty());
+            for thread in threads {
+                assert_eq!(thread.varint(1), Some(pid));
+            }
+        }
+    }
+}

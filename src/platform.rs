@@ -1,6 +1,8 @@
 // Copyright 2026 Lalit Maganti
 // SPDX-License-Identifier: Apache-2.0
 
+#[cfg(all(target_family = "wasm", target_os = "unknown"))]
+use std::sync::OnceLock;
 #[cfg(not(all(target_family = "wasm", target_os = "unknown")))]
 pub(crate) use std::time::{Instant, SystemTime, UNIX_EPOCH};
 #[cfg(all(target_family = "wasm", target_os = "unknown"))]
@@ -187,8 +189,11 @@ pub(crate) fn process_name() -> String {
     "WASM instance".into()
 }
 
-// A browser capture describes one WASM instance/worker, not an OS process.
+// Keep one synthetic process ID per WASM instance across all captures. Randomizing
+// it reduces collisions when traces from different instances/workers are merged.
 #[cfg(all(target_family = "wasm", target_os = "unknown"))]
 pub(crate) fn process_id() -> u32 {
-    1
+    static PROCESS_ID: OnceLock<u32> = OnceLock::new();
+    // Perfetto's process descriptor uses an int32 PID; reserve zero as well.
+    *PROCESS_ID.get_or_init(|| (js_sys::Math::random() * f64::from(i32::MAX)) as u32 + 1)
 }
